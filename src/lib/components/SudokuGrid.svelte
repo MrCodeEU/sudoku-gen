@@ -1,7 +1,18 @@
 <script>
     export let sudokuData;
     export let forceSolution = false;
-    $: ({ grid, solution, size, boxWidth, boxHeight, regions, puzzleId } = sudokuData);
+    
+    // Add default initialization
+    $: ({ 
+        grid = [], 
+        solution = [], 
+        size = 0, 
+        boxWidth = 0, 
+        boxHeight = 0, 
+        regions = [], 
+        puzzleId = 0,
+        layoutType = 'regular'
+    } = sudokuData || {});
     
     let showSolution = false;
 
@@ -17,9 +28,33 @@
     $: displaySolution = showSolution || forceSolution;
 
     function getCellClasses(row, col, isRightBorder, isBottomBorder) {
+        if (!regions || !Array.isArray(regions)) return ['cell', 'bg-white', 'flex', 'items-center', 'justify-center', 'font-bold'];
+        
+        const cellIndex = row * size + col;
+        const currentRegion = regions.findIndex(r => r?.includes?.(cellIndex));
         const classes = ['cell', 'bg-white', 'flex', 'items-center', 'justify-center', 'font-bold'];
-        if (isRightBorder) classes.push('border-r-thick');
-        if (isBottomBorder) classes.push('border-b-thick');
+        
+        // Only add box borders for regular layout
+        if (layoutType === 'regular') {
+            if (isRightBorder) classes.push('border-r-thick');
+            if (isBottomBorder) classes.push('border-b-thick');
+        }
+        
+        // Add jigsaw borders
+        if (layoutType === 'jigsaw' && currentRegion !== -1) {
+            // Right border
+            const rightNeighborIndex = cellIndex + 1;
+            if (col < size - 1 && !regions[currentRegion].includes(rightNeighborIndex)) {
+                classes.push('border-r-thick');
+            }
+            
+            // Bottom border
+            const bottomNeighborIndex = cellIndex + size;
+            if (row < size - 1 && !regions[currentRegion].includes(bottomNeighborIndex)) {
+                classes.push('border-b-thick');
+            }
+        }
+        
         if (row === size - 1) classes.push('last-row');
         if (col === size - 1) classes.push('last-column');
         return classes.join(' ');
@@ -140,12 +175,9 @@
         background-color: white;
     }
 
-    .border-r-thick {
-        border-right: 3pt solid black !important;
-    }
-
-    .border-b-thick {
-        border-bottom: 3pt solid black !important;
+    .border-r-thick, .border-b-thick {
+        border-color: black !important;
+        border-width: 2pt !important;
     }
 
     .last-row {

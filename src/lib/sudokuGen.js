@@ -12,23 +12,98 @@ function getFactors(n) {
 function getValidBoxCombinations(size) {
     const factors = getFactors(size);
     const combinations = [];
+    
+    // Add jigsaw as first option
+    combinations.push({ width: size, height: 1, type: 'jigsaw' });
+    
+    // Add regular configurations, excluding 1xN and Nx1
     for (const width of factors) {
         for (const height of factors) {
-            if (width * height === size) {
-                combinations.push({ width, height });
+            if (width * height === size && width > 1 && height > 1) {
+                combinations.push({ width, height, type: 'regular' });
             }
         }
     }
     return combinations;
 }
 
+function generateJigsawRegions(size) {
+    const regions = Array(size).fill().map(() => []);
+    const cells = new Set();
+    
+    function getNeighbors(cell) {
+        const [row, col] = [Math.floor(cell / size), cell % size];
+        return [
+            [row - 1, col], [row + 1, col],
+            [row, col - 1], [row, col + 1]
+        ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size)
+         .map(([r, c]) => r * size + c)
+         .filter(n => !cells.has(n));
+    }
+
+    // Start with random seed points for each region
+    for (let region = 0; region < size; region++) {
+        let startCell;
+        do {
+            startCell = Math.floor(Math.random() * (size * size));
+        } while (cells.has(startCell));
+
+        const queue = [startCell];
+        regions[region].push(startCell);
+        cells.add(startCell);
+
+        // Grow region until it has exactly 'size' cells
+        while (regions[region].length < size && queue.length > 0) {
+            const currentCell = queue.shift();
+            const neighbors = getNeighbors(currentCell);
+            
+            // Randomize neighbor selection
+            for (let i = neighbors.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [neighbors[i], neighbors[j]] = [neighbors[j], neighbors[i]];
+            }
+
+            for (const neighbor of neighbors) {
+                if (regions[region].length < size && !cells.has(neighbor)) {
+                    regions[region].push(neighbor);
+                    cells.add(neighbor);
+                    queue.push(neighbor);
+                }
+            }
+        }
+
+        // If region is incomplete, restart the whole process
+        if (regions[region].length < size) {
+            regions.fill([]);
+            cells.clear();
+            region = -1; // Will be incremented to 0 in next iteration
+            continue;
+        }
+    }
+
+    // Verify all regions are complete
+    if (regions.some(region => region.length !== size)) {
+        return generateJigsawRegions(size); // Try again if any region is incomplete
+    }
+
+    return regions;
+}
+
 class SudokuGenerator {
-    constructor(size, boxWidth, boxHeight) {
+    constructor(size, boxWidth, boxHeight, layoutType = 'regular') {
         this.size = size;
         this.boxWidth = boxWidth;
         this.boxHeight = boxHeight;
-        this.maxGenerationTime = 5000; // 5 seconds timeout
-        this.maxRetries = 3;
+        this.layoutType = layoutType;
+        // Increase timeout based on grid size, with extra time for jigsaw layout
+        this.maxGenerationTime = layoutType === 'jigsaw' ? 
+            Math.max(15000, size * size * 1000) : // 15 seconds minimum for jigsaw, scaling with size
+            5000; // Keep original 5 seconds for regular layouts
+        this.maxRetries = 5; // Increase retries as well
+        // Initialize regions based on layoutType
+        this.regions = this.layoutType === 'jigsaw' ? 
+            generateJigsawRegions(size) : 
+            this.generateRegions();
         this.reset();
     }
 
@@ -44,6 +119,7 @@ class SudokuGenerator {
 
     isValid(num, pos) {
         const [row, col] = pos;
+        const cellIndex = row * this.size + col;
 
         // Check row
         for (let x = 0; x < this.size; x++) {
@@ -55,12 +131,22 @@ class SudokuGenerator {
             if (this.grid[x][col] === num && x !== row) return false;
         }
 
-        // Check box
-        const boxX = Math.floor(col / this.boxWidth);
-        const boxY = Math.floor(row / this.boxHeight);
-        for (let i = boxY * this.boxHeight; i < boxY * this.boxHeight + this.boxHeight; i++) {
-            for (let j = boxX * this.boxWidth; j < boxX * this.boxWidth + this.boxWidth; j++) {
-                if (this.grid[i][j] === num && (i !== row || j !== col)) return false;
+        // Find which region this cell belongs to
+        let regionIndex = -1;
+        for (let i = 0; i < this.regions.length; i++) {
+            if (this.regions[i].includes(cellIndex)) {
+                regionIndex = i;
+                break;
+            }
+        }
+
+        // Check region
+        if (regionIndex !== -1) {
+            for (const idx of this.regions[regionIndex]) {
+                const [r, c] = [Math.floor(idx / this.size), idx % this.size];
+                if (this.grid[r][c] === num && (r !== row || c !== col)) {
+                    return false;
+                }
             }
         }
 
@@ -129,6 +215,13 @@ class SudokuGenerator {
             try {
                 this.reset();
                 
+                // Ensure regions are initialized properly
+                if (!this.regions || !Array.isArray(this.regions) || this.regions.length === 0) {
+                    this.regions = this.layoutType === 'jigsaw' ? 
+                        generateJigsawRegions(this.size) : 
+                        this.generateRegions();
+                }
+                
                 if (progressCallback) {
                     progressCallback(0);
                 }
@@ -158,7 +251,8 @@ class SudokuGenerator {
                         size: this.size,
                         boxWidth: this.boxWidth,
                         boxHeight: this.boxHeight,
-                        regions: this.generateRegions()
+                        regions: this.regions,
+                        layoutType: this.layoutType
                     };
                 }
             } catch (error) {

@@ -1,12 +1,12 @@
 import { SudokuGenerator } from '../sudokuGen.js';
 
 self.onmessage = async function(e) {
-    const { size, boxWidth, boxHeight, difficulty, count } = e.data;
-    console.log('Worker received request:', { size, boxWidth, boxHeight, difficulty, count });
+    const { size, boxWidth, boxHeight, difficulty, count, layoutType } = e.data;
+    console.log('Worker received request:', { size, boxWidth, boxHeight, difficulty, count, layoutType });
     
     try {
         const puzzles = [];
-        const generator = new SudokuGenerator(size, boxWidth, boxHeight);
+        const generator = new SudokuGenerator(size, boxWidth, boxHeight, layoutType);
         
         for (let i = 0; i < count; i++) {
             const progressCallback = (percent) => {

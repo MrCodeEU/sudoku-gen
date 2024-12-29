@@ -3,8 +3,9 @@
     import { getValidBoxCombinations } from '$lib/sudokuGen';
     import { browser } from '$app/environment';
     
+    let layoutType = 'regular';
     let gridSize = 9;
-    let boxConfig = { width: 3, height: 3 };
+    let boxConfig = { width: 3, height: 3, type: 'regular' };
     let difficulty = 0.5;
     let count = 1;
     let sudokuDataList = [];
@@ -22,7 +23,7 @@
 
     async function generatePuzzle() {
         try {
-            console.log('Starting puzzle generation:', { gridSize, boxConfig, difficulty, count });
+            console.log('Starting puzzle generation:', { gridSize, boxConfig, difficulty, count, layoutType });
             error = null;
             generating = true;
             progress = 0;
@@ -65,7 +66,8 @@
                 boxWidth: boxConfig.width, 
                 boxHeight: boxConfig.height, 
                 difficulty, 
-                count 
+                count,
+                layoutType: boxConfig.type  // Make sure this is passed
             });
         } catch (e) {
             console.error('Generation error:', e);
@@ -155,7 +157,9 @@
             Box-Konfiguration:
             <select bind:value={boxConfig} class="border p-1">
                 {#each boxCombinations as combo}
-                    <option value={combo}>{combo.width}x{combo.height}</option>
+                    <option value={combo}>
+                        {combo.type === 'jigsaw' ? 'Jigsaw' : `${combo.width}x${combo.height}`}
+                    </option>
                 {/each}
             </select>
         </label>
