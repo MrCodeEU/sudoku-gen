@@ -1,0 +1,3 @@
+[submodule "sudoku_gen_rust"]
+	path = sudoku_gen_rust
+	url = ./sudoku_gen_rust
