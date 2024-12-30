@@ -65,17 +65,22 @@ export async function uploadSudoku(sudokuData) {
 export async function getSudoku(id) {
     try {
         const record = await pb.collection('sudokus').getOne(id);
-        const sudoku = JSON.parse(record.sudoku);
+        const sudokuData = typeof record.sudoku === 'string' 
+            ? JSON.parse(record.sudoku)
+            : record.sudoku;
+
         return {
-            ...sudoku,
+            ...sudokuData,
             id: record.id,
             difficulty: parseFloat(record.difficulty),
             size: parseInt(record.size),
-            layoutType: record.layout
+            layoutType: record.layout,
+            created: record.created,
+            updated: record.updated
         };
     } catch (error) {
         console.error('Failed to get sudoku:', error);
-        throw error;
+        throw new Error(`Failed to load sudoku ${id}: ${error.message}`);
     }
 }
 
