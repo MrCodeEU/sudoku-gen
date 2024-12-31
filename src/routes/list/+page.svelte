@@ -14,12 +14,15 @@
     let error = null;
     let sudokus = [];
     let totalPages = 0;
+    let totalItems = 0;  // Add this line
 
     // Filter and sort states
     let filters = {
         difficulty: '',
         size: '',
-        layout: ''
+        layout: '',
+        dateFrom: '',
+        dateTo: ''
     };
     let sortField = 'created';
     let sortOrder = 'desc';
@@ -87,6 +90,7 @@
             );
             sudokus = result.items;
             totalPages = result.totalPages;
+            totalItems = result.totalItems;  // Add this line
         } catch (e) {
             console.error('Error loading sudokus:', e);
             error = e.message;
@@ -100,7 +104,9 @@
         filters = {
             difficulty: '',
             size: '',
-            layout: ''
+            layout: '',
+            dateFrom: '',
+            dateTo: ''
         };
         currentPage = 1;
     }
@@ -140,7 +146,12 @@
 <div class="flex h-screen">
     <!-- Main Content -->
     <div class="flex-1 flex flex-col items-center gap-8 p-4 overflow-y-auto">
-        <h1 class="text-2xl font-bold">Sudoku Liste</h1>
+        <div class="w-full max-w-[1200px] flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Sudoku Liste</h1>
+            <div class="text-lg font-semibold text-gray-600">
+                {totalItems} Sudokus gefunden
+            </div>
+        </div>
         
         <!-- Add page size selector -->
         <div class="w-full max-w-[1200px] flex justify-between items-center">
@@ -234,6 +245,26 @@
                         </button>
                     </div>
                 </div>
+
+                <div class="flex flex-col">
+                    <label for="dateFrom">Von Datum:</label>
+                    <input 
+                        type="date" 
+                        id="dateFrom"
+                        bind:value={filters.dateFrom}
+                        class="p-2 rounded"
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="dateTo">Bis Datum:</label>
+                    <input 
+                        type="date" 
+                        id="dateTo"
+                        bind:value={filters.dateTo}
+                        class="p-2 rounded"
+                    />
+                </div>
             </div>
             
             <div class="mt-4 flex justify-end">
@@ -278,7 +309,8 @@
             </div>
         {/if}
         
-        <div class="grid grid-cols-1 gap-16 w-full max-w-[1200px]">
+        <!-- Modified grid layout -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 w-full max-w-[1200px]">
             {#each sudokus as sudoku, index}
                 <div class="flex flex-col items-center relative">
                     <input 
@@ -287,13 +319,16 @@
                         on:change={() => toggleSelection(sudoku)}
                         class="absolute top-0 right-0 w-6 h-6 z-10"
                     />
-                    <div class="text-sm text-gray-500 mb-2">
+                    <div class="text-xs text-gray-500 mb-2">
                         Erstellt am: {new Date(sudoku.created).toLocaleString()}
                     </div>
-                    <SudokuGrid 
-                        sudokuData={sudoku} 
-                        sequenceNumber={currentPage * perPage - perPage + index + 1}
-                    />
+                    <div class="transform scale-75 origin-top small w-full">
+                        <SudokuGrid 
+                            sudokuData={sudoku} 
+                            sequenceNumber={currentPage * perPage - perPage + index + 1}
+                            small={true}
+                        />
+                    </div>
                 </div>
             {/each}
         </div>

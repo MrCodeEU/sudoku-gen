@@ -2,6 +2,8 @@
     export let sudokuData;
     export let forceSolution = false;
     export let sequenceNumber = null; // Add this to receive the sequence number
+    export let small = false; // Add this prop
+    export let colorRegions = false;  // Add this prop
     
     // Add default initialization
     $: ({ 
@@ -35,6 +37,10 @@
         const currentRegion = regions.findIndex(r => r?.includes?.(cellIndex));
         const classes = ['cell', 'bg-white', 'flex', 'items-center', 'justify-center', 'font-bold'];
         
+        if (colorRegions && currentRegion !== -1) {
+            classes.push(`region-${currentRegion % 16}`);
+        }
+
         // Only add box borders for regular layout
         if (layoutType !== 'jigsaw') {
             if (isRightBorder) classes.push('border-r-thick');
@@ -86,7 +92,7 @@
 
 
     <div 
-            class="grid bg-gray-300 sudoku-grid"
+            class="grid bg-gray-300 sudoku-grid {small ? 'small' : ''}"
             style="grid-template-columns: repeat({size}, 1fr); --grid-size: {size};"
         >
         {#each grid as cell, index}
@@ -147,7 +153,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: min(4vw, 40px);  /* Adjusted for larger cells */
+        font-size: min(4vw, 40px);  /* Default size */
+    }
+
+    /* Add small variant */
+    :global(.small) .cell-content {
+        font-size: min(1.8vw, 12px);  /* Even smaller size for grid view */
     }
 
     .solution-number {
@@ -163,6 +174,24 @@
         border-bottom: 2px solid #374151 !important; /* Added !important */
         margin-bottom: -1px; /* Add this to fix corner gaps */
     }
+
+    /* Replace the region colors with the new soft and muted tones */
+    .region-0  { background-color: #F2D7D5 !important; } /* Soft Pink */
+    .region-1  { background-color: #D5E1DF !important; } /* Soft Green */
+    .region-2  { background-color: #F8E5C8 !important; } /* Soft Peach */
+    .region-3  { background-color: #DDEBF1 !important; } /* Light Blue */
+    .region-4  { background-color: #FFF9C4 !important; } /* Pale Yellow */
+    .region-5  { background-color: #E1D5E7 !important; } /* Lavender */
+    .region-6  { background-color: #F3E0E0 !important; } /* Blush */
+    .region-7  { background-color: #D7F2E4 !important; } /* Mint */
+    .region-8  { background-color: #F5D0C5 !important; } /* Peach Pink */
+    .region-9  { background-color: #D9F7D6 !important; } /* Soft Lime */
+    .region-10 { background-color: #FFF4A3 !important; } /* Mellow Yellow */
+    .region-11 { background-color: #CCE0F5 !important; } /* Sky Blue */
+    .region-12 { background-color: #E5D5F2 !important; } /* Pale Purple */
+    .region-13 { background-color: #F9E5CF !important; } /* Beige */
+    .region-14 { background-color: #F2C2C2 !important; } /* Light Coral */
+    .region-15 { background-color: #E2F3E4 !important; } /* Sage */
 
     @media print {
         .sudoku-grid {
@@ -274,5 +303,23 @@
             font-size: 8pt;
             color: #666666 !important;
         }
+
+        /* Ensure colors print properly */
+        .region-0  { background-color: #F2D7D5 !important; print-color-adjust: exact; }
+        .region-1  { background-color: #D5E1DF !important; print-color-adjust: exact; }
+        .region-2  { background-color: #F8E5C8 !important; print-color-adjust: exact; }
+        .region-3  { background-color: #DDEBF1 !important; print-color-adjust: exact; }
+        .region-4  { background-color: #FFF9C4 !important; print-color-adjust: exact; }
+        .region-5  { background-color: #E1D5E7 !important; print-color-adjust: exact; }
+        .region-6  { background-color: #F3E0E0 !important; print-color-adjust: exact; }
+        .region-7  { background-color: #D7F2E4 !important; print-color-adjust: exact; }
+        .region-8  { background-color: #F5D0C5 !important; print-color-adjust: exact; }
+        .region-9  { background-color: #D9F7D6 !important; print-color-adjust: exact; }
+        .region-10 { background-color: #FFF4A3 !important; print-color-adjust: exact; }
+        .region-11 { background-color: #CCE0F5 !important; print-color-adjust: exact; }
+        .region-12 { background-color: #E5D5F2 !important; print-color-adjust: exact; }
+        .region-13 { background-color: #F9E5CF !important; print-color-adjust: exact; }
+        .region-14 { background-color: #F2C2C2 !important; print-color-adjust: exact; }
+        .region-15 { background-color: #E2F3E4 !important; print-color-adjust: exact; }
     }
 </style>

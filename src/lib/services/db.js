@@ -106,6 +106,18 @@ export async function listSudokus(page = 1, perPage = 30, filters = {}, sortFiel
                 filterRules.push(`layout = "${filters.layout}"`);
             }
         }
+        if (filters.dateFrom) {
+            // Add time to start of day
+            const startDate = new Date(filters.dateFrom);
+            startDate.setHours(0, 0, 0, 0);
+            filterRules.push(`created >= "${startDate.toISOString()}"`);
+        }
+        if (filters.dateTo) {
+            // Add time to end of day
+            const endDate = new Date(filters.dateTo);
+            endDate.setHours(23, 59, 59, 999);
+            filterRules.push(`created <= "${endDate.toISOString()}"`);
+        }
 
         const result = await pb.collection('sudokus').getList(page, perPage, {
             sort: `${sortOrder === 'desc' ? '-' : ''}${sortField}`,

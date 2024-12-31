@@ -15,6 +15,7 @@
     let generating = false;
     let progress = 0;
     let progressGrid = null;
+    let colorRegions = false;  // Add this line
     
     let worker;
 
@@ -275,6 +276,11 @@
             </select>
         </label>
         
+        <label class="flex items-center gap-2">
+            <input type="checkbox" bind:checked={colorRegions}>
+            Regionen einfärben
+        </label>
+
         <button 
             class="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-blue-300"
             on:click={generatePuzzle}
@@ -353,6 +359,7 @@
                     <SudokuGrid 
                         sudokuData={{...sudoku}} 
                         sequenceNumber={index + 1}
+                        {colorRegions}
                     />
                     <button 
                         class="bg-indigo-500 text-white px-4 py-2 rounded mt-4 no-print hover:bg-indigo-600"
@@ -373,6 +380,7 @@
                         sudokuData={{...sudoku}} 
                         sequenceNumber={index + 1}
                         forceSolution={true}
+                        {colorRegions}
                     />
                 </div>
             {/each}

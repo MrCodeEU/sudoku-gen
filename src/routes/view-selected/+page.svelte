@@ -9,6 +9,7 @@
     let error = null;
     let includeSolutions = true;
     let alternateLayout = false; // false = solutions at end, true = alternating
+    let colorRegions = false;  // Add this line
 
     onMount(async () => {
         try {
@@ -61,6 +62,11 @@
                 </label>
             {/if}
 
+            <label class="flex items-center gap-2">
+                <input type="checkbox" bind:checked={colorRegions}>
+                Regionen einfärben
+            </label>
+
             <button 
                 class="bg-blue-500 text-white px-4 py-2 rounded mt-2"
                 on:click={() => window.print()}
@@ -85,6 +91,7 @@
                                 sudokuData={sudoku}
                                 sequenceNumber={index + 1}
                                 forceSolution={false}
+                                {colorRegions}
                             />
                         </div>
                         {#if includeSolutions}
@@ -93,6 +100,7 @@
                                     sudokuData={sudoku}
                                     sequenceNumber={index + 1}
                                     forceSolution={true}
+                                    {colorRegions}
                                 />
                             </div>
                         {/if}
@@ -107,6 +115,7 @@
                                 sudokuData={sudoku}
                                 sequenceNumber={index + 1}
                                 forceSolution={false}
+                                {colorRegions}
                             />
                         </div>
                     {/each}
@@ -121,6 +130,7 @@
                                     sudokuData={sudoku}
                                     sequenceNumber={index + 1}
                                     forceSolution={true}
+                                    {colorRegions}
                                 />
                             </div>
                         {/each}
