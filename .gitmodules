@@ -3,4 +3,4 @@
 	url = ./sudoku_gen_rust
 [submodule "sudoku_gen_go"]
 	path = sudoku_gen_go
-	url = ./sudoku_gen_go
+	url = https://github.com/MrCodeEU/sudoku_gen_go.git
