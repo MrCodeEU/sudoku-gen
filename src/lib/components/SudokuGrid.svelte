@@ -36,7 +36,7 @@
         const classes = ['cell', 'bg-white', 'flex', 'items-center', 'justify-center', 'font-bold'];
         
         // Only add box borders for regular layout
-        if (layoutType === 'regular') {
+        if (layoutType !== 'jigsaw') {
             if (isRightBorder) classes.push('border-r-thick');
             if (isBottomBorder) classes.push('border-b-thick');
         }
