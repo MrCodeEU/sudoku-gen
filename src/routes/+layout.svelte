@@ -1,5 +1,6 @@
 <script>
     import '../app.css';
+    export const prerender = true;
 </script>
 
 <nav class="bg-gray-800 text-white p-4 mb-4">

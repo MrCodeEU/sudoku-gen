@@ -1,0 +1,83 @@
+name: Deploy SvelteKit App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      
+      - name: List files for debugging
+        run: |
+          pwd
+          ls -la
+          echo "Current directory contents:"
+          find . -type f -not -path '*/\.*'
+      
+      - name: Set environment variables
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          echo "REPO_NAME_LC=$(echo $REPO_NAME | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "OWNER_LC=$(echo $OWNER | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@master
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.REPO_NAME_LC }}:latest
+            ghcr.io/${{ env.OWNER_LC  }}/${{ env.REPO_NAME_LC }}:${{ github.sha }}
+      
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
+      - name: Deploy to server
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} -p ${{ secrets.SERVER_PORT }} '
+            # Pull the new image
+            echo "Pulling new image..."
+            docker pull ghcr.io/${{ env.OWNER_LC }}/${{ env.REPO_NAME_LC }}:latest
+            
+            # Stop and remove the existing container
+            echo "Removing existing container..."
+            docker stop ${{ env.REPO_NAME_LC }} || true
+            docker rm ${{ env.REPO_NAME_LC }} || true
+            
+            # Start new container
+            echo "Starting new container..."
+            docker run -d \
+              --name ${{ env.REPO_NAME_LC }} \
+              -p 3004:3000 \
+              --restart unless-stopped \
+              ghcr.io/${{ env.OWNER_LC }}/${{ env.REPO_NAME_LC }}:latest
+            
+            # Clean up old images
+            echo "Cleaning up old images..."
+            docker image prune -f
+            
+            # Print deployment info
+            echo "Deployment completed at $(date)"
+            echo "Container ID: $(docker ps -q -f name=${{ env.REPO_NAME_LC }})"
+          '
