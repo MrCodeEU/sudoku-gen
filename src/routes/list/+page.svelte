@@ -1,7 +1,7 @@
 <script>
     import { browser } from '$app/environment';
     import { onMount } from 'svelte';
-    import { listSudokus } from '$lib/services/db';
+    import { listSudokus } from '$lib/client/api';
     import SudokuGrid from '$lib/components/SudokuGrid.svelte';
     import { selectedSudokus, toggleSelection, clearSelection, bulkSelect } from '$lib/stores/selection';
     import { getValidBoxCombinations } from '$lib/sudokuGen';

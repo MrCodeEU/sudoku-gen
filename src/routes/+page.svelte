@@ -2,7 +2,7 @@
     import SudokuGrid from '$lib/components/SudokuGrid.svelte';
     import { getValidBoxCombinations } from '$lib/sudokuGen';
     import { browser } from '$app/environment';
-    import { uploadSudoku } from '$lib/services/db';
+    import { uploadSudoku } from '$lib/client/api';  // Change this line
     import BulkUpload from '$lib/components/BulkUpload.svelte';
     
     let layoutType = 'regular';

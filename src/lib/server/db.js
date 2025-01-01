@@ -14,7 +14,7 @@ import PocketBase from 'pocketbase';
 const pb = new PocketBase('https://base.mljr.eu');
 
 // Authenticate immediately when the module is imported
-async function authenticate() {
+export async function authenticate() {
     try {
         const authData = await pb.collection('_superusers').authWithPassword(
             import.meta.env.VITE_POCKETBASE_EMAIL,
@@ -26,9 +26,6 @@ async function authenticate() {
         throw error;
     }
 }
-
-// Initial authentication
-authenticate();
 
 // Re-authenticate every 30 minutes to ensure the token stays valid
 setInterval(authenticate, 30 * 60 * 1000);

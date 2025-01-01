@@ -1,5 +1,5 @@
 <script>
-    import { uploadSudoku, doesSudokuExist } from '$lib/services/db';
+    import { uploadSudoku, doesSudokuExist } from '$lib/client/api';
     
     export let sudokus = [];
     

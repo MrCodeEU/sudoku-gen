@@ -2,7 +2,7 @@
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
     import SudokuGrid from '$lib/components/SudokuGrid.svelte';
-    import { getSudoku } from '$lib/services/db';
+    import { getSudoku } from '$lib/client/api';
 
     let sudokus = [];
     let loading = true;
