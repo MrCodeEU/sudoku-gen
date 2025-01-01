@@ -15,6 +15,7 @@
     let sudokus = [];
     let totalPages = 0;
     let totalItems = 0;  // Add this line
+    let showSidebar = false;
 
     // Filter and sort states
     let filters = {
@@ -141,9 +142,23 @@
     $: if (browser && (currentPage || filters || sortField || sortOrder || perPage)) {
         loadSudokus();
     }
+
+    // Add this function for handling clicks outside
+    function handleClickOutside(event) {
+        const sidebar = document.getElementById('selection-sidebar');
+        const toggleButton = document.getElementById('sidebar-toggle');
+        if (showSidebar && 
+            sidebar && 
+            !sidebar.contains(event.target) && 
+            !toggleButton.contains(event.target)) {
+            showSidebar = false;
+        }
+    }
 </script>
 
-<div class="flex h-screen">
+<svelte:window on:click={handleClickOutside} />
+
+<div class="flex h-screen relative">
     <!-- Main Content -->
     <div class="flex-1 flex flex-col items-center gap-8 p-4 overflow-y-auto">
         <div class="w-full max-w-[1200px] flex justify-between items-center">
@@ -154,26 +169,38 @@
         </div>
         
         <!-- Add page size selector -->
-        <div class="w-full max-w-[1200px] flex justify-between items-center">
+        <div class="w-full max-w-[1200px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <select 
                 bind:value={perPage}
-                class="p-2 rounded border"
+                class="p-2 rounded border w-full sm:w-auto"
             >
                 {#each pageSizes as size}
                     <option value={size}>{size} pro Seite</option>
                 {/each}
             </select>
 
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                <button 
+                    id="sidebar-toggle"
+                    on:click={() => showSidebar = !showSidebar}
+                    class="bg-gray-500 text-white px-4 py-2 rounded flex items-center gap-2 flex-grow sm:flex-grow-0"
+                >
+                    <span>Auswahl ({$selectedSudokus.size})</span>
+                    {#if showSidebar}
+                        <span>→</span>
+                    {:else}
+                        <span>←</span>
+                    {/if}
+                </button>
                 <button 
                     on:click={handleSelectAll}
-                    class="bg-blue-500 text-white px-4 py-2 rounded"
+                    class="bg-blue-500 text-white px-4 py-2 rounded flex-grow sm:flex-grow-0"
                 >
                     Alle auswählen
                 </button>
                 <button 
                     on:click={handleDeselectAll}
-                    class="bg-gray-500 text-white px-4 py-2 rounded"
+                    class="bg-gray-500 text-white px-4 py-2 rounded flex-grow sm:flex-grow-0"
                 >
                     Alle abwählen
                 </button>
@@ -334,33 +361,39 @@
         </div>
     </div>
 
-    <!-- Selection Sidebar -->
-    <div class="w-64 bg-gray-100 p-4 border-l border-gray-200 overflow-y-auto">
-        <h2 class="text-lg font-bold mb-4">Ausgewählte Sudokus ({$selectedSudokus.size})</h2>
-        
-        {#if $selectedSudokus.size > 0}
-            <div class="flex flex-col gap-2 mb-4">
-                <button 
-                    on:click={viewSelected}
-                    class="bg-blue-500 text-white px-4 py-2 rounded"
-                >
-                    Ausgewählte anzeigen/drucken
-                </button>
-                <button 
-                    on:click={clearSelection}
-                    class="bg-red-500 text-white px-4 py-2 rounded"
-                >
-                    Auswahl löschen
-                </button>
-            </div>
+    <!-- Modified Selection Sidebar with ID -->
+    <div id="selection-sidebar"
+         class="fixed top-0 right-0 h-full bg-gray-100 border-l border-gray-200 overflow-y-auto transition-all duration-300 z-50 shadow-lg"
+         class:w-64={showSidebar}
+         class:w-0={!showSidebar}
+    >
+        <div class="w-64 p-4 {showSidebar ? '' : 'hidden'}">
+            <h2 class="text-lg font-bold mb-4">Ausgewählte Sudokus ({$selectedSudokus.size})</h2>
+            
+            {#if $selectedSudokus.size > 0}
+                <div class="flex flex-col gap-2 mb-4">
+                    <button 
+                        on:click={viewSelected}
+                        class="bg-blue-500 text-white px-4 py-2 rounded"
+                    >
+                        Ausgewählte anzeigen/drucken
+                    </button>
+                    <button 
+                        on:click={clearSelection}
+                        class="bg-red-500 text-white px-4 py-2 rounded"
+                    >
+                        Auswahl löschen
+                    </button>
+                </div>
 
-            <div class="flex flex-col gap-1">
-                {#each Array.from($selectedSudokus) as id}
-                    <div class="text-sm bg-white p-2 rounded">
-                        ID: {id}
-                    </div>
-                {/each}
-            </div>
-        {/if}
+                <div class="flex flex-col gap-1">
+                    {#each Array.from($selectedSudokus) as id}
+                        <div class="text-sm bg-white p-2 rounded">
+                            ID: {id}
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+        </div>
     </div>
 </div>
