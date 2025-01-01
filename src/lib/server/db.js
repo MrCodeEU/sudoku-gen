@@ -15,11 +15,15 @@ const pb = new PocketBase('https://base.mljr.eu');
 
 // Authenticate immediately when the module is imported
 export async function authenticate() {
+    const email = import.meta.env.VITE_POCKETBASE_EMAIL;
+    const password = import.meta.env.VITE_POCKETBASE_PASSWORD;
+
+    if (!email || !password) {
+        throw new Error('Missing PocketBase credentials in environment variables');
+    }
+
     try {
-        const authData = await pb.collection('_superusers').authWithPassword(
-            import.meta.env.VITE_POCKETBASE_EMAIL,
-            import.meta.env.VITE_POCKETBASE_PASSWORD
-        );
+        const authData = await pb.collection('_superusers').authWithPassword(email, password);
         console.log('Successfully authenticated with PocketBase');
     } catch (error) {
         console.error('Failed to authenticate with PocketBase:', error);

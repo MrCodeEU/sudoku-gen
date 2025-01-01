@@ -1,5 +1,13 @@
 FROM node:20-alpine
 
+# Add build arguments
+ARG VITE_POCKETBASE_EMAIL
+ARG VITE_POCKETBASE_PASSWORD
+
+# Set environment variables
+ENV VITE_POCKETBASE_EMAIL=$VITE_POCKETBASE_EMAIL
+ENV VITE_POCKETBASE_PASSWORD=$VITE_POCKETBASE_PASSWORD
+
 # Install required packages
 RUN apk add --no-cache curl bash
 
