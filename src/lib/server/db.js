@@ -22,12 +22,25 @@ export async function authenticate() {
         throw new Error('Missing PocketBase credentials in environment variables');
     }
 
-    try {
-        const authData = await pb.collection('_superusers').authWithPassword(email, password);
-        console.log('Successfully authenticated with PocketBase');
-    } catch (error) {
-        console.error('Failed to authenticate with PocketBase:', error);
-        throw error;
+    const maxRetries = 20;
+    const baseDelay = 1000; // Start with 1 second
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const authData = await pb.collection('_superusers').authWithPassword(email, password);
+            console.log('Successfully authenticated with PocketBase');
+            return;
+        } catch (error) {
+            const delay = Math.min(baseDelay * Math.pow(1.5, attempt), 300000); // Cap at 5 minutes
+            console.error(`Authentication attempt ${attempt + 1}/${maxRetries} failed:`, error);
+            
+            if (attempt === maxRetries - 1) {
+                throw new Error('Failed to authenticate after maximum retries');
+            }
+
+            console.log(`Retrying in ${Math.round(delay/1000)} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
     }
 }
 
