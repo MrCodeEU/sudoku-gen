@@ -1,38 +1,16 @@
-# sv
+# Sudoku Generator
+![grafik](https://github.com/user-attachments/assets/5fa180b4-6a72-46d9-a687-946324c545b3)
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This simple web app generates the desired Sudoku (9x9, 12x12, 16x16)(normal, jigsaw)(difficulty from 20% to 80%) in the webbrowser using web workers.
 
-## Creating a project
+While this is quite good for normal sudokus jigsaw sudokus are not really possible except for 9x9 and a long time. Therefore the project https://github.com/MrCodeEU/sudoku_gen_go exists as this go implimentation can generate 100 12x12 Sudokus in around 1 hour.
 
-If you're seeing this, you've probably already done this step. Congrats!
+# Sudoku List viewer
 
-```bash
-# create a new project in the current directory
-npx sv create
+All generated sudokus (via the web interaface or the go cli) can be saved in a databse. This webapp then allows the user to list and filter for desired sudokus and select up to 50 sudokus at once for printing.
+![grafik](https://github.com/user-attachments/assets/2c2ccb8f-4ccb-4297-8744-8336b1e37a77)
 
-# create a new project in my-app
-npx sv create my-app
-```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+The selected sudokus can than be printed with or without solution and with or wothout colors.
+![grafik](https://github.com/user-attachments/assets/d24ab154-79e5-4ff6-aac9-0a1f09823702)
+![grafik](https://github.com/user-attachments/assets/2d32025a-c403-4dc1-b668-968436c96712)
