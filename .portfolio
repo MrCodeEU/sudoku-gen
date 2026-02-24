@@ -1,0 +1,14 @@
+{
+  "description": "A web app for generating and printing Sudoku puzzles in 9×9, 12×12, and 16×16 sizes across normal and jigsaw variants, with adjustable difficulty, a database-backed list viewer, and bulk printing with or without solutions.",
+  "featured": false,
+  "tags": ["svelte", "sveltekit", "sudoku", "webapp", "puzzle", "webworkers"],
+  "images": [
+    "https://github.com/user-attachments/assets/5fa180b4-6a72-46d9-a687-946324c545b3",
+    "https://github.com/user-attachments/assets/2c2ccb8f-4ccb-4297-8744-8336b1e37a77",
+    "https://github.com/user-attachments/assets/d24ab154-79e5-4ff6-aac9-0a1f09823702",
+    "https://github.com/user-attachments/assets/2d32025a-c403-4dc1-b668-968436c96712"
+  ],
+  "links": [
+    {"name": "Live", "url": "https://sudoku.mljr.eu"}
+  ]
+}
