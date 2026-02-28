@@ -1,5 +1,1 @@
-import { authenticate } from '$lib/server/db.js';
-
-export const init = async () => {
-  await authenticate();
-}
+// SQLite database initializes automatically on first import of $lib/server/db.js
