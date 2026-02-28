@@ -6,8 +6,5 @@ export default defineConfig({
     worker: {
         format: 'es',
         plugins: () => []
-    },
-    ssr: {
-        external: ['bun:sqlite']
     }
 });
