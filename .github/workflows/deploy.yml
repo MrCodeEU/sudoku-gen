@@ -33,8 +33,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/mrcodeeU/sudoku-gen:latest
-            ghcr.io/mrcodeeU/sudoku-gen:${{ github.sha }}
+            ghcr.io/mrcodeeu/sudoku-gen:latest
+            ghcr.io/mrcodeeu/sudoku-gen:${{ github.sha }}
           build-args: |
             VITE_POCKETBASE_EMAIL=${{ secrets.VITE_POCKETBASE_EMAIL }}
             VITE_POCKETBASE_PASSWORD=${{ secrets.VITE_POCKETBASE_PASSWORD }}
