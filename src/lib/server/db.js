@@ -1,197 +1,133 @@
-import PocketBase from 'pocketbase';
+import { Database } from 'bun:sqlite';
+import { mkdirSync } from 'fs';
+import { dirname } from 'path';
 
-/**
- * @typedef {Object} SudokuRecord
- * @property {string} id
- * @property {string} sudoku
- * @property {string} difficulty
- * @property {string} size
- * @property {string} layout
- * @property {string} created
- * @property {string} updated
- */
+const DB_PATH = process.env.DB_PATH || '/data/sudoku.db';
 
-const pb = new PocketBase('https://base.mljr.eu');
+try {
+    mkdirSync(dirname(DB_PATH), { recursive: true });
+} catch {}
 
-// Authenticate immediately when the module is imported
-export async function authenticate() {
-    const email = import.meta.env.VITE_POCKETBASE_EMAIL;
-    const password = import.meta.env.VITE_POCKETBASE_PASSWORD;
+const db = new Database(DB_PATH, { create: true });
 
-    if (!email || !password) {
-        throw new Error('Missing PocketBase credentials in environment variables');
-    }
+db.run('PRAGMA journal_mode=WAL');
 
-    const maxRetries = 20;
-    const baseDelay = 1000; // Start with 1 second
+db.run(`
+    CREATE TABLE IF NOT EXISTS sudokus (
+        id TEXT PRIMARY KEY,
+        sudoku TEXT NOT NULL,
+        difficulty REAL NOT NULL,
+        size INTEGER NOT NULL,
+        layout TEXT NOT NULL,
+        created TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+        updated TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
+    )
+`);
 
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-            const authData = await pb.collection('_superusers').authWithPassword(email, password);
-            console.log('Successfully authenticated with PocketBase');
-            return;
-        } catch (error) {
-            const delay = Math.min(baseDelay * Math.pow(1.5, attempt), 300000); // Cap at 5 minutes
-            console.error(`Authentication attempt ${attempt + 1}/${maxRetries} failed:`, error);
-            
-            if (attempt === maxRetries - 1) {
-                throw new Error('Failed to authenticate after maximum retries');
-            }
-
-            console.log(`Retrying in ${Math.round(delay/1000)} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-    }
+function parseItem(item) {
+    const sudokuData = typeof item.sudoku === 'string' ? JSON.parse(item.sudoku) : item.sudoku;
+    return {
+        ...sudokuData,
+        id: item.id,
+        difficulty: parseFloat(item.difficulty),
+        size: parseInt(item.size),
+        layoutType: item.layout,
+        created: item.created,
+        updated: item.updated
+    };
 }
 
-// Re-authenticate every 30 minutes to ensure the token stays valid
-setInterval(authenticate, 30 * 60 * 1000);
+export function uploadSudoku(sudokuData) {
+    const layoutConfig = sudokuData.layoutType === 'jigsaw'
+        ? 'jigsaw'
+        : `${sudokuData.boxWidth}x${sudokuData.boxHeight}`;
 
-export async function uploadSudoku(sudokuData) {
-    try {
-        // Store the actual box configuration
-        const layoutConfig = sudokuData.layoutType === 'jigsaw' 
-            ? 'jigsaw' 
-            : `${sudokuData.boxWidth}x${sudokuData.boxHeight}`;
+    db.prepare(
+        `INSERT OR REPLACE INTO sudokus (id, sudoku, difficulty, size, layout)
+         VALUES (?, ?, ?, ?, ?)`
+    ).run(
+        sudokuData.id,
+        JSON.stringify({
+            grid: sudokuData.grid,
+            solution: sudokuData.solution,
+            regions: sudokuData.regions,
+            boxWidth: sudokuData.boxWidth,
+            boxHeight: sudokuData.boxHeight
+        }),
+        parseFloat(sudokuData.difficulty),
+        parseInt(sudokuData.size),
+        layoutConfig
+    );
 
-        const data = {
-            id: sudokuData.id,
-            sudoku: JSON.stringify({
-                grid: sudokuData.grid,
-                solution: sudokuData.solution,
-                regions: sudokuData.regions,
-                boxWidth: sudokuData.boxWidth,
-                boxHeight: sudokuData.boxHeight,
-            }),
-            difficulty: sudokuData.difficulty.toString(),
-            size: sudokuData.size.toString(),
-            layout: layoutConfig
-        };
-
-        const record = await pb.collection('sudokus').create(data);
-        return record;
-    } catch (error) {
-        console.error('Failed to upload sudoku:', error);
-        throw error;
-    }
+    return { id: sudokuData.id };
 }
 
-export async function getSudoku(id) {
-    try {
-        const record = await pb.collection('sudokus').getOne(id);
-        const sudokuData = typeof record.sudoku === 'string' 
-            ? JSON.parse(record.sudoku)
-            : record.sudoku;
-
-        return {
-            ...sudokuData,
-            id: record.id,
-            difficulty: parseFloat(record.difficulty),
-            size: parseInt(record.size),
-            layoutType: record.layout,
-            created: record.created,
-            updated: record.updated
-        };
-    } catch (error) {
-        console.error('Failed to get sudoku:', error);
-        throw new Error(`Failed to load sudoku ${id}: ${error.message}`);
-    }
+export function getSudoku(id) {
+    const record = db.prepare('SELECT * FROM sudokus WHERE id = ?').get(id);
+    if (!record) throw new Error(`Sudoku ${id} not found`);
+    return parseItem(record);
 }
 
-export async function listSudokus(page = 1, perPage = 30, filters = {}, sortField = 'created', sortOrder = 'desc') {
-    try {
-        const filterRules = [];
-        if (filters.difficulty) {
-            const diff = parseFloat(filters.difficulty);
-            const lowerBound = diff - 0.2;
-            filterRules.push(`difficulty >= ${lowerBound} && difficulty <= ${diff}`);
-        }
-        if (filters.size) {
-            filterRules.push(`size = "${filters.size}"`);
-        }
-        if (filters.layout) {
-            if (filters.layout === 'jigsaw') {
-                filterRules.push(`layout = "jigsaw"`);
-            } else if (filters.layout === 'regular') {
-                // Match any NxN pattern except jigsaw
-                filterRules.push(`layout != "jigsaw"`);
-            } else if (filters.layout.includes('x')) {
-                // Match exact box configuration
-                filterRules.push(`layout = "${filters.layout}"`);
-            }
-        }
-        if (filters.dateFrom) {
-            // Add time to start of day
-            const startDate = new Date(filters.dateFrom);
-            startDate.setHours(0, 0, 0, 0);
-            filterRules.push(`created >= "${startDate.toISOString()}"`);
-        }
-        if (filters.dateTo) {
-            // Add time to end of day
-            const endDate = new Date(filters.dateTo);
-            endDate.setHours(23, 59, 59, 999);
-            filterRules.push(`created <= "${endDate.toISOString()}"`);
-        }
+export function listSudokus(page = 1, perPage = 30, filters = {}, sortField = 'created', sortOrder = 'desc') {
+    const whereClauses = [];
+    const params = [];
 
-        const result = await pb.collection('sudokus').getList(page, perPage, {
-            sort: `${sortOrder === 'desc' ? '-' : ''}${sortField}`,
-            filter: filterRules.join(' && '),
-            requestKey: `list_${page}_${perPage}_${JSON.stringify(filters)}_${sortField}_${sortOrder}`,
-        });
-        
-        return {
-            items: result.items.map(item => {
-                try {
-                    // Check if sudoku is already an object
-                    const sudokuData = typeof item.sudoku === 'string' 
-                        ? JSON.parse(item.sudoku)
-                        : item.sudoku;
-
-                    return {
-                        ...item,
-                        ...sudokuData,
-                        difficulty: parseFloat(item.difficulty),
-                        size: parseInt(item.size),
-                        layoutType: item.layout
-                    };
-                } catch (parseError) {
-                    console.error('Failed to parse sudoku data:', parseError);
-                    // Return a minimal valid object in case of parse error
-                    return {
-                        ...item,
-                        grid: [],
-                        solution: [],
-                        regions: [],
-                        boxWidth: 0,
-                        boxHeight: 0,
-                        difficulty: 0,
-                        size: 0,
-                        layoutType: 'unknown'
-                    };
-                }
-            }),
-            totalPages: result.totalPages,
-            totalItems: result.totalItems,
-            page: result.page
-        };
-    } catch (error) {
-        if (error.isAbort) {
-            console.log('Request was cancelled, ignoring...');
-            return { items: [], totalPages: 0, totalItems: 0, page: 1 };
-        }
-        console.error('Failed to fetch sudokus:', error);
-        throw new Error('Failed to fetch sudokus');
+    if (filters.difficulty) {
+        const diff = parseFloat(filters.difficulty);
+        whereClauses.push('difficulty >= ? AND difficulty <= ?');
+        params.push(diff - 0.2, diff);
     }
+    if (filters.size) {
+        whereClauses.push('size = ?');
+        params.push(parseInt(filters.size));
+    }
+    if (filters.layout) {
+        if (filters.layout === 'jigsaw') {
+            whereClauses.push("layout = 'jigsaw'");
+        } else if (filters.layout === 'regular') {
+            whereClauses.push("layout != 'jigsaw'");
+        } else if (filters.layout.includes('x')) {
+            whereClauses.push('layout = ?');
+            params.push(filters.layout);
+        }
+    }
+    if (filters.dateFrom) {
+        const startDate = new Date(filters.dateFrom);
+        startDate.setHours(0, 0, 0, 0);
+        whereClauses.push('created >= ?');
+        params.push(startDate.toISOString());
+    }
+    if (filters.dateTo) {
+        const endDate = new Date(filters.dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        whereClauses.push('created <= ?');
+        params.push(endDate.toISOString());
+    }
+
+    const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const validSortFields = ['created', 'updated', 'difficulty', 'size', 'layout'];
+    const safeSort = validSortFields.includes(sortField) ? sortField : 'created';
+    const safeOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+    const { count: totalItems } = db.prepare(
+        `SELECT COUNT(*) as count FROM sudokus ${where}`
+    ).get(...params);
+    const totalPages = Math.ceil(totalItems / perPage);
+    const offset = (page - 1) * perPage;
+
+    const items = db.prepare(
+        `SELECT * FROM sudokus ${where} ORDER BY ${safeSort} ${safeOrder} LIMIT ? OFFSET ?`
+    ).all(...params, perPage, offset);
+
+    return {
+        items: items.map(parseItem),
+        totalPages,
+        totalItems,
+        page
+    };
 }
 
-export async function doesSudokuExist(id) {
-    try {
-        const record = await pb.collection('sudokus').getOne(id);
-        return true;
-    } catch (error) {
-        if (error.status === 404) {
-            return false;
-        }
-        throw error;
-    }
+export function doesSudokuExist(id) {
+    return db.prepare('SELECT 1 FROM sudokus WHERE id = ?').get(id) !== null;
 }
