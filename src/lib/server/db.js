@@ -1,4 +1,4 @@
-import { Database } from 'bun:sqlite';
+import Database from 'better-sqlite3';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 
@@ -8,11 +8,11 @@ try {
     mkdirSync(dirname(DB_PATH), { recursive: true });
 } catch {}
 
-const db = new Database(DB_PATH, { create: true });
+const db = new Database(DB_PATH);
 
-db.run('PRAGMA journal_mode=WAL');
+db.pragma('journal_mode = WAL');
 
-db.run(`
+db.prepare(`
     CREATE TABLE IF NOT EXISTS sudokus (
         id TEXT PRIMARY KEY,
         sudoku TEXT NOT NULL,
@@ -22,7 +22,7 @@ db.run(`
         created TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
         updated TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
     )
-`);
+`).run();
 
 function parseItem(item) {
     const sudokuData = typeof item.sudoku === 'string' ? JSON.parse(item.sudoku) : item.sudoku;
