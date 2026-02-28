@@ -35,9 +35,6 @@ jobs:
           tags: |
             ghcr.io/mrcodeeu/sudoku-gen:latest
             ghcr.io/mrcodeeu/sudoku-gen:${{ github.sha }}
-          build-args: |
-            VITE_POCKETBASE_EMAIL=${{ secrets.VITE_POCKETBASE_EMAIL }}
-            VITE_POCKETBASE_PASSWORD=${{ secrets.VITE_POCKETBASE_PASSWORD }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
