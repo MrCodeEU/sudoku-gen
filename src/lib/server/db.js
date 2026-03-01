@@ -129,5 +129,5 @@ export function listSudokus(page = 1, perPage = 30, filters = {}, sortField = 'c
 }
 
 export function doesSudokuExist(id) {
-    return db.prepare('SELECT 1 FROM sudokus WHERE id = ?').get(id) !== null;
+    return db.prepare(`SELECT 1 FROM sudokus WHERE id = ?`).get(id) !== undefined;
 }
