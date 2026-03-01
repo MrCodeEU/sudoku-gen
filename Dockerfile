@@ -19,4 +19,4 @@ RUN bun run build
 RUN mkdir -p /data
 
 EXPOSE 3000
-ENTRYPOINT ["bun", "./build"]
+CMD ["node", "./build"]
