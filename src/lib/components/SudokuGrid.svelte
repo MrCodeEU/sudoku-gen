@@ -30,40 +30,60 @@
     $: console.log('Grid component received data:', { grid, size, boxWidth, boxHeight });
     $: displaySolution = showSolution || forceSolution;
 
-    function getCellClasses(row, col, isRightBorder, isBottomBorder) {
-        if (!regions || !Array.isArray(regions)) return ['cell', 'bg-white', 'flex', 'items-center', 'justify-center', 'font-bold'];
-        
-        const cellIndex = row * size + col;
-        const currentRegion = regions.findIndex(r => r?.includes?.(cellIndex));
-        const classes = ['cell', 'bg-white', 'flex', 'items-center', 'justify-center', 'font-bold'];
-        
-        if (colorRegions && currentRegion !== -1) {
-            classes.push(`region-${currentRegion % 16}`);
-        }
+    // Region index per cell: jigsaw uses the stored regions, regular layouts use boxes
+    $: regionOf = buildRegionMap(size, boxWidth, boxHeight, regions, layoutType);
 
-        // Only add box borders for regular layout
-        if (layoutType !== 'jigsaw') {
-            if (isRightBorder) classes.push('border-r-thick');
-            if (isBottomBorder) classes.push('border-b-thick');
-        }
-        
-        // Add jigsaw borders
-        if (layoutType === 'jigsaw' && currentRegion !== -1) {
-            // Right border
-            const rightNeighborIndex = cellIndex + 1;
-            if (col < size - 1 && !regions[currentRegion].includes(rightNeighborIndex)) {
-                classes.push('border-r-thick');
-            }
-            
-            // Bottom border
-            const bottomNeighborIndex = cellIndex + size;
-            if (row < size - 1 && !regions[currentRegion].includes(bottomNeighborIndex)) {
-                classes.push('border-b-thick');
+    function buildRegionMap(size, boxWidth, boxHeight, regions, layoutType) {
+        const map = new Array(size * size).fill(-1);
+        if (layoutType === 'jigsaw' && Array.isArray(regions) && regions.length) {
+            regions.forEach((region, r) => region?.forEach?.(idx => { map[idx] = r; }));
+        } else if (boxWidth && boxHeight) {
+            const boxesPerRow = size / boxWidth;
+            for (let i = 0; i < size * size; i++) {
+                const row = Math.floor(i / size);
+                const col = i % size;
+                map[i] = Math.floor(row / boxHeight) * boxesPerRow + Math.floor(col / boxWidth);
             }
         }
-        
-        if (row === size - 1) classes.push('last-row');
-        if (col === size - 1) classes.push('last-column');
+        return map;
+    }
+
+    // Grid lines drawn as one SVG overlay (viewBox units = cells) so lines never
+    // overlap cell content and thick segments join cleanly at corners
+    $: thinPath = buildThinPath(size);
+    $: thickPath = buildThickPath(size, regionOf);
+
+    function buildThinPath(size) {
+        let d = '';
+        for (let i = 1; i < size; i++) d += `M${i} 0V${size}M0 ${i}H${size}`;
+        return d;
+    }
+
+    function buildThickPath(size, regionOf) {
+        let d = '';
+        const differs = (a, b) => regionOf[a] !== regionOf[b];
+        for (let line = 1; line < size; line++) {
+            // Merge consecutive boundary edges into one segment per run
+            let hStart = -1, vStart = -1;
+            for (let k = 0; k <= size; k++) {
+                const h = k < size && differs((line - 1) * size + k, line * size + k);
+                if (h && hStart < 0) hStart = k;
+                if (!h && hStart >= 0) { d += `M${hStart} ${line}H${k}`; hStart = -1; }
+
+                const v = k < size && differs(k * size + line - 1, k * size + line);
+                if (v && vStart < 0) vStart = k;
+                if (!v && vStart >= 0) { d += `M${line} ${vStart}V${k}`; vStart = -1; }
+            }
+        }
+        return d;
+    }
+
+    // regionOf/colorRegions passed in so the template re-renders when they change
+    function getCellClasses(index, regionOf, colorRegions) {
+        const classes = ['cell', 'flex', 'items-center', 'justify-center', 'font-bold'];
+        if (colorRegions && regionOf[index] >= 0) {
+            classes.push(`region-${regionOf[index] % 16}`);
+        }
         return classes.join(' ');
     }
 
@@ -91,24 +111,28 @@
     {/if}
 
 
-    <div 
-            class="grid bg-gray-300 sudoku-grid {small ? 'small' : ''}"
-            style="grid-template-columns: repeat({size}, 1fr); --grid-size: {size};"
+    <div
+            class="grid sudoku-grid {small ? 'small' : ''}"
+            style="grid-template-columns: repeat({size}, 1fr); grid-template-rows: repeat({size}, 1fr); --grid-size: {size};"
         >
         {#each grid as cell, index}
-            {@const row = Math.floor(index / size)}
-            {@const col = index % size}
-            {@const isRightBorder = (col + 1) % boxWidth === 0 && col < size - 1}
-            {@const isBottomBorder = (row + 1) % boxHeight === 0 && row < size - 1}
             {@const solutionValue = solution[index]}
             {@const displayValue = displaySolution ? solutionValue : cell}
-            
-            <div class={getCellClasses(row, col, isRightBorder, isBottomBorder)}>
+
+            <div class={getCellClasses(index, regionOf, colorRegions)}>
                 <div class="cell-content {displaySolution && !cell ? 'solution-number' : ''}">
                     {displayValue || ''}
                 </div>
             </div>
         {/each}
+
+        {#if size}
+            <svg class="grid-lines" viewBox="0 0 {size} {size}" preserveAspectRatio="none" aria-hidden="true">
+                <path class="line-thin" d={thinPath} />
+                <path class="line-thick" d={thickPath} />
+                <rect class="line-outer" x="0" y="0" width={size} height={size} />
+            </svg>
+        {/if}
     </div>
 
     <!-- Add puzzle ID at bottom -->
@@ -126,23 +150,54 @@
         margin: 0 auto;  /* Center the grid */
         padding: 0;
         display: grid;
-        border-right: none;  /* Remove right border */
-        border-bottom: none; /* Remove bottom border */
-        border: 4px solid #000000;  /* Add border around the grid */
-        /* Add these properties to fix sizing */
+        background: #ffffff;
         position: relative;
-        overflow: hidden;
     }
-    
+
     .cell {
         position: relative;
         width: 100%;
         height: 100%;
-        border-right: 1px solid #d1d5db;
-        border-bottom: 1px solid #d1d5db;
-        /* Add this to ensure content stays within bounds */
-        overflow: hidden;
+        min-width: 0;
+        min-height: 0;
     }
+
+    /* All grid lines live in this overlay; widths are absolute (non-scaling) */
+    .grid-lines {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+    }
+
+    .grid-lines path,
+    .grid-lines rect {
+        fill: none;
+        vector-effect: non-scaling-stroke;
+    }
+
+    .line-thin {
+        stroke: #9ca3af;
+        stroke-width: 1px;
+    }
+
+    .line-thick {
+        stroke: #000000;
+        stroke-width: 3px;
+        stroke-linecap: square;
+    }
+
+    .line-outer {
+        stroke: #000000;
+        stroke-width: 4px;
+        stroke-linejoin: miter;
+    }
+
+    .small .line-thick { stroke-width: 1.5px; }
+    .small .line-outer { stroke-width: 2px; }
+    .small .line-thin { stroke-width: 0.5px; }
 
     .cell-content {
         position: absolute;
@@ -165,16 +220,6 @@
         color: #2563eb;  /* Blue color for solution numbers */
     }
     
-    .border-r-thick {
-        border-right: 2px solid #374151 !important; /* Added !important */
-        margin-right: -1px; /* Add this to fix corner gaps */
-    }
-    
-    .border-b-thick {
-        border-bottom: 2px solid #374151 !important; /* Added !important */
-        margin-bottom: -1px; /* Add this to fix corner gaps */
-    }
-
     /* Replace the region colors with the new soft and muted tones */
     .region-0  { background-color: #F2D7D5 !important; } /* Soft Pink */
     .region-1  { background-color: #D5E1DF !important; } /* Soft Green */
@@ -200,94 +245,18 @@
             aspect-ratio: 1;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            border: 3pt solid black;
             margin: 0 auto;
-            /* Add this to ensure borders are fully visible */
             padding: 0;
-            overflow: visible;
-            position: relative;
+            print-color-adjust: exact;
         }
 
-        .cell {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            background-color: white;
-            /* Adjust position to help with border overlap */
-            z-index: 1;
-            /* Remove default border to prevent interference */
-            border: none;
-            border: 0.25pt solid #999999;
-            margin-right: -0.75pt;
-            margin-bottom: -0.75pt;
-            position: relative; /* Ensure positioning context */
-        }
-
-        /* Thicker borders for regions */
-        .border-r-thick {
-            border-right: 4pt solid black !important;
-            margin-right: -3pt !important;
-            position: relative;
-            z-index: 2;
-        }
-
-        .border-b-thick {
-            border-bottom: 4pt solid black !important;
-            margin-bottom: -3pt !important;
-            position: relative;
-            z-index: 2;
-        }
-
-        /* Single corner fix */
-        .border-r-thick.border-b-thick::after {
-            content: '';
-            position: absolute;
-            bottom: -3pt;
-            right: -3pt;
-            width: 6pt;
-            height: 6pt;
-            background: black;
-            z-index: 3;
-            transform: translate(50%, 50%);
-        }
-
-        /* Fix for L-shaped intersections */
-        .border-r-thick::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: -3pt;
-            width: 3pt;
-            height: calc(100% + 3pt); /* Extend slightly past the bottom */
-            background: black;
-            z-index: 3;
-        }
-
-        .border-b-thick::after {
-            content: '';
-            position: absolute;
-            bottom: -3pt;
-            left: 0;
-            width: calc(100% + 3pt); /* Extend slightly past the right edge */
-            height: 3pt;
-            background: black;
-            z-index: 3;
-        }
+        .line-thin  { stroke: #888888; stroke-width: 0.5pt; }
+        .line-thick { stroke-width: 2pt; }
+        .line-outer { stroke-width: 2.5pt; }
 
         .cell-content {
             font-size: calc(180mm / var(--grid-size) * 0.4); /* Scales with grid size */
             line-height: 1;
-        }
-        
-        /* Add intersection fixes */
-        .border-r-thick.border-b-thick {
-            z-index: 3;
         }
 
         /* Force white background */
